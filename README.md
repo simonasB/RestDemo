@@ -1,4 +1,5 @@
 # RestDemo
+# Don't store real connection strings in the public repository!!!
 
 Useful links:
 * EF tutorial: https://app.pluralsight.com/library/courses/entity-framework-core-get-started/table-of-contents
