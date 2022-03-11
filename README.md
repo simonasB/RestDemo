@@ -7,3 +7,4 @@ Useful links:
 * Setting up Azure using VS: https://docs.microsoft.com/en-us/azure/app-service/app-service-web-tutorial-dotnet-sqldatabase
 * Storing DB connection string in Azure and overriding using env variables: https://stackoverflow.com/questions/31097933/setting-the-sql-connection-string-for-asp-net-core-web-app-in-azure
 * Automapper: https://automapper.org/
+*
