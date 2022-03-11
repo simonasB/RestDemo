@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using DemoRestSimonas.Data.Dtos.Auth;
 using DemoRestSimonas.Data.Dtos.Posts;
 using DemoRestSimonas.Data.Dtos.Topics;
 using DemoRestSimonas.Data.Entities;
@@ -16,6 +17,8 @@ namespace DemoRestSimonas.Data
             CreateMap<CreatePostDto, Post>();
             CreateMap<UpdatePostDto, Post>();
             CreateMap<Post, PostDto>();
+
+            CreateMap<DemoRestUser, UserDto>();
         }
     }
 }

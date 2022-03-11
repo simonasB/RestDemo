@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
+using DemoRestSimonas.Auth.Model;
 using DemoRestSimonas.Data.Dtos.Topics;
 using DemoRestSimonas.Data.Entities;
 using DemoRestSimonas.Data.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,14 +29,17 @@ namespace DemoRestSimonas.Controllers
     {
         private readonly ITopicsRepository _topicsRepository;
         private readonly IMapper _mapper;
+        private readonly IAuthorizationService _authorizationService;
 
-        public TopicsController(ITopicsRepository topicsRepository, IMapper mapper)
+        public TopicsController(ITopicsRepository topicsRepository, IMapper mapper, IAuthorizationService authorizationService)
         {
             _topicsRepository = topicsRepository;
             _mapper = mapper;
+            _authorizationService = authorizationService;
         }
 
         [HttpGet]
+        [Authorize(Roles = DemoRestUserRoles.SimpleUser)]
         public async Task<IEnumerable<TopicDto>> GetAll()
         {
             return (await _topicsRepository.GetAll()).Select(o => _mapper.Map<TopicDto>(o));
@@ -63,10 +68,21 @@ namespace DemoRestSimonas.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = DemoRestUserRoles.SimpleUser)]
         public async Task<ActionResult<TopicDto>> Put(int id, UpdateTopicDto topicDto)
         {
             var topic = await _topicsRepository.Get(id);
             if (topic == null) return NotFound($"Topic with id '{id}' not found.");
+
+            var authorizationResult = await _authorizationService.AuthorizeAsync(User, topic, PolicyNames.SameUser);
+
+            if (!authorizationResult.Succeeded)
+            {
+                // 403
+                // 404
+                // 401
+                return Forbid();
+            }
 
             //topic.Name = topicDto.Name;
             _mapper.Map(topicDto, topic);
