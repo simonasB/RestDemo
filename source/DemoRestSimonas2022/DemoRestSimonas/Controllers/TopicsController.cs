@@ -1,9 +1,13 @@
+using System.Security.Claims;
 using System.Text.Json;
+using DemoRestSimonas.Auth.Model;
 using DemoRestSimonas.Data;
 using DemoRestSimonas.Data.Dtos.Topics;
 using DemoRestSimonas.Data.Entities;
 using DemoRestSimonas.Data.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace DemoRestSimonas.Controllers;
 
@@ -20,10 +24,12 @@ namespace DemoRestSimonas.Controllers;
 public class TopicsController : ControllerBase
 {
     private readonly ITopicsRepository _topicsRepository;
+    private readonly IAuthorizationService _authorizationService;
 
-    public TopicsController(ITopicsRepository topicsRepository)
+    public TopicsController(ITopicsRepository topicsRepository, IAuthorizationService authorizationService)
     {
         _topicsRepository = topicsRepository;
+        _authorizationService = authorizationService;
     }
 
     // // AutoMapper
@@ -92,10 +98,15 @@ public class TopicsController : ControllerBase
 
     // api/topics
     [HttpPost]
+    [Authorize(Roles = ForumRoles.ForumUser)]
     public async Task<ActionResult<TopicDto>> Create(CreateTopicDto createTopicDto)
     {
         var topic = new Topic
-            { Name = createTopicDto.Name, Description = createTopicDto.Description, CreationDate = DateTime.UtcNow };
+        {
+            Name = createTopicDto.Name, Description = createTopicDto.Description,
+            CreationDate = DateTime.UtcNow,
+            UserId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+        };
 
         await _topicsRepository.CreateAsync(topic);
 
@@ -107,6 +118,7 @@ public class TopicsController : ControllerBase
     // api/topics
     [HttpPut]
     [Route("{topicId}")]
+    [Authorize(Roles = ForumRoles.ForumUser)]
     public async Task<ActionResult<TopicDto>> Update(int topicId, UpdateTopicDto updateTopicDto)
     {
         var topic = await _topicsRepository.GetAsync(topicId);
@@ -115,6 +127,13 @@ public class TopicsController : ControllerBase
         if (topic == null)
             return NotFound();
 
+        var authorizationResult = await _authorizationService.AuthorizeAsync(User, topic, PolicyNames.ResourceOwner);
+        if (!authorizationResult.Succeeded)
+        {
+            // 404
+            return Forbid();
+        }
+        
         topic.Description = updateTopicDto.Description;
         await _topicsRepository.UpdateAsync(topic);
 

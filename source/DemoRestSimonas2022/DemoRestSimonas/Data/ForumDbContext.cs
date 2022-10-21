@@ -1,9 +1,11 @@
+using DemoRestSimonas.Auth.Model;
 using DemoRestSimonas.Data.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace DemoRestSimonas.Data;
 
-public class ForumDbContext : DbContext
+public class ForumDbContext : IdentityDbContext<ForumRestUser>
 {
     public DbSet<Topic> Topics { get; set; }
     public DbSet<Post> Posts { get; set; }
@@ -11,6 +13,6 @@ public class ForumDbContext : DbContext
     
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB; Initial Catalog=ForumDb2");
+        optionsBuilder.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB; Initial Catalog=DemoForumDb3");
     }
 }
