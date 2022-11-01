@@ -7,6 +7,7 @@ using DemoRestSimonas.Data.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -59,7 +60,11 @@ app.MapControllers();
 app.UseAuthentication();
 app.UseAuthorization();
 
-//var dbSeeder = app.Services.CreateScope().ServiceProvider.GetRequiredService<AuthDbSeeder>();
-//await dbSeeder.SeedAsync();
+using var scope = app.Services.CreateScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<ForumDbContext>();
+dbContext.Database.Migrate();
+
+var dbSeeder = scope.ServiceProvider.GetRequiredService<AuthDbSeeder>();
+await dbSeeder.SeedAsync();
 
 app.Run();
