@@ -1,0 +1,334 @@
+openapi: 3.0.0
+info:
+  title: Example API
+  description: An example API topic, post, and comment resources
+  version: 1.0.0
+
+servers:
+  - url: https://api.example.com/v1
+
+paths:
+  /topics:
+    get:
+      summary: Get a list of topics
+      tags:
+        - topic
+      operationId: getAllTopics
+      responses:
+        "200":
+          description: A list of topics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/topic"
+              example:
+                - id: 1
+                  title: "OpenAPI Best Practices"
+                  description: "Discussion about best practices when using OpenAPI"
+                - id: 2
+                  title: "API Versioning Strategies"
+                  description: "A topic to discuss various API versioning techniques"
+    post:
+      description: "Create a topic"
+      tags:
+        - topic
+      operationId: createTopic
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createTopic"
+            example:
+              - title: "OpenAPI Best Practices"
+                description: "Discussion about best practices when using OpenAPI"
+      responses:
+        "201":
+          $ref: "#/components/responses/singleTopic"
+        "400":
+          $ref: "#/components/responses/badRequest"
+        "422":
+          $ref: "#/components/responses/unprocessableEntity"
+
+  /topics/{topicId}:
+    parameters:
+      - $ref: '#/components/parameters/topicId'
+    get:
+      summary: Get a topic by ID
+      tags:
+        - topic
+      operationId: getTopic
+      responses:
+        "200":
+          $ref: "#/components/responses/singleTopic"
+        "404":
+          $ref: "#/components/responses/notFound"
+    put:
+      summary: Update a topic by ID
+      tags:
+        - topic
+      operationId: updateTopic
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateTopic"
+            example:
+              - description: "Discussion about best practices when using OpenAPI"
+      responses:
+        "200":
+          $ref: "#/components/responses/singleTopic"
+        "400":
+          $ref: "#/components/responses/badRequest"
+        "404":
+          $ref: "#/components/responses/notFound"
+        "422":
+          $ref: "#/components/responses/unprocessableEntity"
+    delete:
+      summary: Delete a topic by ID
+      tags:
+        - topic
+      operationId: deleteTopic
+      responses:
+        "404":
+          $ref: "#/components/responses/notFound"
+        "204":
+          description: Topic deleted
+  /topics/{topicId}/posts:
+    parameters:
+      - $ref: '#/components/parameters/topicId'
+    get:
+      summary: Get posts for a topic
+      tags:
+        - post
+      operationId: getPosts
+      responses:
+        "200":
+          description: List of posts
+    post:
+      description: 'Add a post'
+      tags:
+        - post
+      operationId: createPost
+      responses:
+        '201':
+          description: OK
+  /topics/{topicId}/posts/{postId}:
+    parameters:
+      - $ref: '#/components/parameters/topicId'
+      - $ref: '#/components/parameters/postId'
+    get:
+      summary: Get a specific post for a topic
+      tags:
+        - post
+      operationId: getPost
+      responses:
+        "200":
+          description: A single post
+    put:
+      summary: Update a post for a topic
+      tags:
+        - post
+      operationId: updatePost
+      responses:
+        "200":
+          description: Updated post
+    delete:
+      summary: Delete a post for a topic
+      tags:
+        - post
+      operationId: deletePost
+      responses:
+        "204":
+          description: Post deleted
+  /topics/{topicId}/posts/{postId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/topicId'
+      - $ref: '#/components/parameters/postId'
+    get:
+      summary: Get comments for a specific post
+      tags:
+        - comment
+      operationId: getComments
+      responses:
+        "200":
+          description: List of comments
+    post:
+      description: "Add a comment for a specific post"
+      tags:
+        - comment
+      operationId: createComment
+      responses:
+        "201":
+          description: OK
+  /topics/{id}/posts/{postId}/comments/{commentId}:
+    parameters:
+      - $ref: '#/components/parameters/topicId'
+      - $ref: '#/components/parameters/postId'
+      - $ref: '#/components/parameters/commentId'
+    get:
+      summary: Get a specific comment
+      tags:
+        - comment
+      operationId: getComment
+      responses:
+        "200":
+          description: A single comment
+    put:
+      summary: Update a comment
+      tags:
+        - comment
+      operationId: updateComment
+      responses:
+        "200":
+          description: Updated comment
+    delete:
+      summary: Delete a comment
+      tags:
+        - comment
+      operationId: deleteComment
+      responses:
+        "204":
+          description: Comment deleted
+components:
+  schemas:
+    topic:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+    createTopic:
+      type: object
+      required:
+        - title
+        - description
+      properties:
+        title:
+          minLength: 2
+          maxLength: 100
+          pattern: "^[a-zA-Z0-9_]+$"  # Only allows letters, numbers, and underscores
+          type: string
+        description:
+          minLength: 3
+          maxLength: 500
+          pattern: "^[a-zA-Z0-9_]+$"  # Only allows letters, numbers, and underscores
+          type: string
+    updateTopic:
+      type: object
+      properties:
+        description:
+          type: string
+    post:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+    comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+    problemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+          description: A URI reference that identifies the problem type.
+        title:
+          type: string
+          description: A short, human-readable summary of the problem type.
+        status:
+          type: integer
+          format: int32
+          description: The HTTP status code applicable to this problem.
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence of the problem.
+        instance:
+          type: string
+          format: uri
+          description: A URI reference that identifies the specific occurrence of the problem.
+        errors:
+          type: object
+          description: A map of detailed errors for every property ([property => error])
+  responses:
+    singleTopic:
+      description: A topic
+      content:
+        application/json:
+          schema:
+            type: object
+            items:
+              $ref: "#/components/schemas/topic"
+          example:
+            - id: 1
+              title: "OpenAPI Best Practices"
+              description: "Discussion about best practices when using OpenAPI"
+    unprocessableEntity:
+      description: Unprocessable entity response
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            items:
+              $ref: "#/components/schemas/problemDetails"
+          example:
+            type: "https://tools.ietf.org/html/rfc4918#section-11.2"
+            title: "Unprocessable Entity"
+            status: 422
+            errors:
+              Name:
+                - "'Name' must not be empty."
+    badRequest:
+      description: Bad request response
+    notFound:
+      description: Resource was not found
+  parameters:
+    topicId:
+      name: topicId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: The unique identifier of the topic
+    postId:
+      name: postId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: The unique identifier of the post
+    commentId:
+      name: commentId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: The unique identifier of the comment
+  
+tags:
+  - name: topic
+    description: Operations related to topics
+  - name: post
+    description: Operations related to posts
+  - name: comment
+    description: Operations related to comments
+
+externalDocs:
+  description: Find more info here
+  url: https://example.com/docs
