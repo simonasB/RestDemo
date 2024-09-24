@@ -1,15 +1,15 @@
-namespace DemoRest20232.Helpers;
+namespace DemoRest2024Live.Helpers;
 
 public class SearchParameters
 {
-    private int _pageSize = 2;
     private int _pageNumber = 1;
+    private int _pageSize = 2;
 
     private const int MaxPageSize = 50;
-
+    
     public int? PageNumber
     {
-        get => _pageNumber;
+        get => _pageNumber; 
         set => _pageNumber = value is null or <= 0 ? _pageNumber : value.Value;
     }
 
