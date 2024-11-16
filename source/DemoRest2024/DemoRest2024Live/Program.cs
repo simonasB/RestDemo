@@ -8,16 +8,29 @@ dotnet add package FluentValidation
 dotnet add package FluentValidation.DependencyInjectionExtensions
 dotnet add package SharpGrip.FluentValidation.AutoValidation.Endpoints
 
+// Microsoft.AspNetCore.Identity
+// Microsoft.AspNetCore.Identity.EntityFrameworkCore
+// Microsoft.AspNetCore.Authentication.JwtBearer
+
 */
 
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using DemoRest2024Live;
+using DemoRest2024Live.Auth;
+using DemoRest2024Live.Auth.Model;
 using DemoRest2024Live.Data;
 using DemoRest2024Live.Data.Entities;
 using DemoRest2024Live.Helpers;
 using FluentValidation;
 using FluentValidation.Results;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Results;
 using SharpGrip.FluentValidation.AutoValidation.Shared.Extensions;
@@ -31,8 +44,35 @@ builder.Services.AddFluentValidationAutoValidation(configuration =>
     configuration.OverrideDefaultResultFactoryWith<ProblemDetailsResultFactory>();
 });
 builder.Services.AddResponseCaching();
+builder.Services.AddTransient<JwtTokenService>();
+builder.Services.AddTransient<SessionService>();
+builder.Services.AddScoped<AuthSeeder>();
+
+builder.Services.AddIdentity<ForumUser, IdentityRole>()
+    .AddEntityFrameworkStores<ForumDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+}).AddJwtBearer(options =>
+{
+    options.MapInboundClaims = false;
+    options.TokenValidationParameters.ValidAudience = builder.Configuration["Jwt:ValidAudience"];
+    options.TokenValidationParameters.ValidIssuer = builder.Configuration["Jwt:ValidIssuer"];
+    options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]));
+});
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+using var scope = app.Services.CreateScope();
+
+var dbSeeder = scope.ServiceProvider.GetRequiredService<AuthSeeder>();
+await dbSeeder.SeedAsync();
 
 /*
     /api/v1/topics GET List 200
@@ -44,6 +84,7 @@ var app = builder.Build();
 
 // app.AddTopicApi();
 
+app.AddAuthApi();
 app.MapGet("api", (HttpContext httpContext, LinkGenerator linkGenerator) => Results.Ok(new List<LinkDto>
 {
     new(linkGenerator.GetUriByName(httpContext, "GetTopics"), "topics", "GET"),
@@ -83,9 +124,11 @@ topicsGroups.MapGet("/topics/{topicId}", async (int topicId, ForumDbContext dbCo
     return topic == null ? Results.NotFound() : TypedResults.Ok(topic.ToDto());
 }).WithName("GetTopic").AddEndpointFilter<ETagFilter>();
 
-topicsGroups.MapPost("/topics", async (CreateTopicDto dto, LinkGenerator linkGenerator, HttpContext httpContext, ForumDbContext dbContext) =>
+topicsGroups.MapPost("/topics", [Authorize(Roles = ForumRoles.ForumUser)] async (CreateTopicDto dto, LinkGenerator linkGenerator, HttpContext httpContext, ForumDbContext dbContext) =>
 {
-    var topic = new Topic { Title = dto.Title, Description = dto.Description, CreatedAt = DateTimeOffset.UtcNow };
+    var topic = new Topic
+        { Title = dto.Title, Description = dto.Description, CreatedAt = DateTimeOffset.UtcNow,
+            UserId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub) };
     dbContext.Topics.Add(topic);
     
     await dbContext.SaveChangesAsync();
@@ -96,7 +139,7 @@ topicsGroups.MapPost("/topics", async (CreateTopicDto dto, LinkGenerator linkGen
     
     return TypedResults.Created(links[0].Href, resource);
 }).WithName("CreateTopic");
-topicsGroups.MapPut("/topics/{topicId}", async (UpdateTopicDto dto, int topicId, ForumDbContext dbContext) =>
+topicsGroups.MapPut("/topics/{topicId}", [Authorize] async (UpdateTopicDto dto, int topicId, HttpContext httpContext, ForumDbContext dbContext) =>
 {
     var topic = await dbContext.Topics.FindAsync(topicId);
     if (topic == null)
@@ -104,6 +147,13 @@ topicsGroups.MapPut("/topics/{topicId}", async (UpdateTopicDto dto, int topicId,
         return Results.NotFound();
     }
 
+    if (!httpContext.User.IsInRole(ForumRoles.Admin) &&
+        httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub) != topic.UserId)
+    {
+        // NotFound()
+        return Results.Forbid();
+    }
+    
     topic.Description = dto.Description;
     
     dbContext.Topics.Update(topic);
@@ -143,6 +193,8 @@ topicsGroups.MapDelete("/topics/{topicId}", async (int topicId, ForumDbContext d
 
 app.MapControllers();
 app.UseResponseCaching();
+app.UseAuthentication();
+app.UseAuthorization();
 app.Run();
 
 static IEnumerable<LinkDto> CreateLinksForSingleTopic(int topicId, LinkGenerator linkGenerator, HttpContext httpContext)

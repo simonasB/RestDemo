@@ -20,15 +20,15 @@ public static class Endpoints
             var topic = await dbContext.Topics.FindAsync(topicId);
             return topic == null ? Results.NotFound() : TypedResults.Ok(topic.ToDto());
         });
-        topicsGroups.MapPost("/topics", async (CreateTopicDto dto, ForumDbContext dbContext) =>
-        {
-            var topic = new Topic { Title = dto.Title, Description = dto.Description, CreatedAt = DateTimeOffset.UtcNow };
-            dbContext.Topics.Add(topic);
-
-            await dbContext.SaveChangesAsync();
-    
-            return TypedResults.Created($"api/topics/{topic.Id}", topic.ToDto());
-        });
+        // topicsGroups.MapPost("/topics", async (CreateTopicDto dto, ForumDbContext dbContext) =>
+        // {
+        //     var topic = new Topic { Title = dto.Title, Description = dto.Description, CreatedAt = DateTimeOffset.UtcNow };
+        //     dbContext.Topics.Add(topic);
+        //
+        //     await dbContext.SaveChangesAsync();
+        //
+        //     return TypedResults.Created($"api/topics/{topic.Id}", topic.ToDto());
+        // });
         topicsGroups.MapPut("/topics/{topicId}", async (UpdateTopicDto dto, int topicId, ForumDbContext dbContext) =>
         {
             var topic = await dbContext.Topics.FindAsync(topicId);
