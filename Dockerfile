@@ -1,27 +1,15 @@
-# https://hub.docker.com/_/microsoft-dotnet
-FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine AS build
-WORKDIR /source
+FROM mcr.microsoft.com/dotnet/sdk:8.0@sha256:35792ea4ad1db051981f62b313f1be3b46b1f45cadbaa3c288cd0d3056eefb83 AS build-env
+WORKDIR /App
 
-# copy csproj and restore as distinct layers
-COPY source/DemoRestSimonas2023/DemoRest20232/*.csproj .
-RUN dotnet restore -r linux-musl-x64 /p:PublishReadyToRun=true
+# Copy everything
+COPY source/DemoRest2024/DemoRest2024Live .
+# Restore as distinct layers
+RUN dotnet restore
+# Build and publish a release
+RUN dotnet publish -c Release -o out
 
-# copy everything else and build app
-COPY source/DemoRestSimonas2023/DemoRest20232/. .
-RUN dotnet publish -c Release -o /app -r linux-musl-x64 --self-contained true --no-restore /p:PublishReadyToRun=true /p:PublishSingleFile=true
-
-# final stage/image
-FROM mcr.microsoft.com/dotnet/runtime-deps:7.0-alpine-amd64
-WORKDIR /app
-COPY --from=build /app .
-ENTRYPOINT ["./DemoRest20232"]
-
-# See: https://github.com/dotnet/announcements/issues/20
-# Uncomment to enable globalization APIs (or delete)
-ENV \
-     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
-     LC_ALL=en_US.UTF-8 \
-     LANG=en_US.UTF-8
- RUN apk add --no-cache \
-     icu-data-full \
-     icu-libs
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0@sha256:6c4df091e4e531bb93bdbfe7e7f0998e7ced344f54426b7e874116a3dc3233ff
+WORKDIR /App
+COPY --from=build-env /App/out .
+ENTRYPOINT ["dotnet", "DemoRest2024Live.dll"]
